@@ -1,0 +1,31 @@
+name: Build Flutter Web
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+
+      - run: flutter pub get
+      - run: flutter build web
+
+      - name: Copy to public
+        run: |
+          mkdir public
+          cp -r build/web/* public/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: flutter-web
+          path: public
