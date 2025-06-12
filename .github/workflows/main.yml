@@ -25,7 +25,7 @@ jobs:
           cp -r build/web/* public/
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: flutter-web
           path: public
