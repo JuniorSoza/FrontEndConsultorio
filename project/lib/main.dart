@@ -1,4 +1,4 @@
-import 'dart:convert';
+//import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +7,7 @@ import 'package:odontologo/widgets/main_menu.dart';
 import 'variables_globales.dart';
 import 'widgets/toast_msg.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
-import 'package:http/http.dart' as http;
+//import 'package:http/http.dart' as http;
 import 'package:responsive_grid/responsive_grid.dart';
 import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,12 +29,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Dental Blis',
+      title: 'Clínica Odontológica',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue), 
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Dental Blis'),
+      home: const MyHomePage(title: 'Clínica Odontológica'),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -76,7 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _loadCredentials() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     setState(() {
       user.text = prefs.getString('username') ?? "login";
       password.text = prefs.getString('password') ?? "PassWord";
@@ -307,7 +307,7 @@ class _MyHomePageState extends State<MyHomePage> {
         token = '';
         userValido = '0';
       });
-      //await _obtenerToken(context);
+      await _obtenerToken(context);
       setState(() {
         _isAuthenticating = false;
       });
@@ -323,15 +323,20 @@ class _MyHomePageState extends State<MyHomePage> {
           desc: 'El usuario $usuario es invalido...',
         ).show();
       }
+      // ignore: use_build_context_synchronously
       Navigator.push(context, MaterialPageRoute(builder: (context) => const MyAppMenu()));
-      //Navigator.push(context, MaterialPageRoute(builder: (context) => const Paciente()));
+      //Navigator.pushNamed(context, '/menu');
     }
   }
 
   Future<void> _obtenerToken(BuildContext context) async {
     try {
+        setState(() {
+          //token = decodedJson['token'];
+          userValido = '1';
+        });
 
-      var headersList = map;
+/*       var headersList = map;
       
       var url = Uri.parse('$baseUrl/api/token');
       var body = {
@@ -358,7 +363,7 @@ class _MyHomePageState extends State<MyHomePage> {
           setState(() {
           userValido = '0';
         });
-      }
+      } */
     
     } on Exception catch (e) {
       // ignore: use_build_context_synchronously

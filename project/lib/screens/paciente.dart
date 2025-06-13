@@ -8,7 +8,6 @@ import 'package:odontologo/widgets/toast_msg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:responsive_grid/responsive_grid.dart';
-import 'package:odontologo/widgets/top_menu.dart';
 //import 'package:http/http.dart' as http;
 import 'package:flutter_dropdown_x/flutter_dropdown_x.dart';
 import 'package:flutter_expandable_widget/flutter_expandable_widget.dart';
@@ -16,7 +15,6 @@ import 'package:flutter_expandable_widget/flutter_expandable_widget.dart';
 
 class Paciente extends StatefulWidget {
   const Paciente({super.key});
-
 
   @override
   // ignore: library_private_types_in_public_api
@@ -57,11 +55,11 @@ final List _genero = generos;
 
 RegExp  get _emailRegex => RegExp (r'^.+@[a-zA-Z]+\.{1}[a-zA-Z]+(\.{0,1}[a-zA-Z]+)$');
 
-  @override
-  void initState() {
-    _limpiarVar();
-    super.initState();
-  }
+@override
+void initState() {
+  _limpiarVar();
+  super.initState();
+}
 
 void _limpiarVar() {
   cedulaController.text='';
@@ -81,7 +79,10 @@ void _limpiarVar() {
 @override
 Widget build(BuildContext context) {
   return Scaffold(
-    appBar: const TopMenuSuperior(title: 'Datos Personales'),
+    appBar: AppBar(title: Text('Historia Clínica', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),),
+                  leading: buttonBack(context),
+                ), 
+    
     body: Column(
       children: [
         ResponsiveGridRow(
@@ -132,7 +133,7 @@ Widget build(BuildContext context) {
                 xs: 5,
                 child: _fechaNacimiento(context)
             ),
-                                          //TurnoProduccion
+                                          
             ResponsiveGridCol(
                 lg: 2,
                 xl: 2,
@@ -192,6 +193,17 @@ Widget build(BuildContext context) {
       ],
     ),
   );
+}
+
+Tooltip buttonBack(BuildContext context) {
+  return Tooltip(message: 'Back',
+                  child: TextButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Image.asset('assets/images/icons8_64.png', width: 20, height: 20,),
+                    label: const Text('Back', style: TextStyle(color: Colors.white),),
+                    style: TextButton.styleFrom(foregroundColor: Colors.white,),
+                  ),
+                );
 }
 
 SizedBox listViewExpandableWidget() {
@@ -618,7 +630,7 @@ Padding _dropdownButtonGenero() {
     padding: const EdgeInsets.all(4.0),
     child: DropDownField(
       titleText: 'Genero',
-      value: edadController.text , //_valueGenero,
+      value: _valueGenero,
       dataSource: _genero,
       onChanged: (value) {
         setState(() {
@@ -836,9 +848,46 @@ Padding _estadoGeneralPaciente() {
 
 // datos antecedentes dentales
 
+bool validarDatos() {
 
+  if (validarCedula(cedulaController.text)) {
+    ToastMSG.showInfo(context, 'Cédula válida', 2);
+    //print('Cédula válida');
+  } else {
+    ToastMSG.showInfo(context, 'Cédula inválida', 2);
+    //print('Cédula inválida');
+  }
+  return true;
+}
 
+bool validarCedula(String cedula) {
+    // Verificar que tenga exactamente 10 dígitos
+    if (cedula.length != 10 || !RegExp(r'^\d{10}$').hasMatch(cedula)) {
+      return false;
+    }
 
+    final provincia = int.parse(cedula.substring(0, 2));
+    final tercerDigito = int.parse(cedula[2]);
+
+    // Validación de provincia y tercer dígito
+    if (provincia < 1 || provincia > 24 || tercerDigito >= 6) {
+      return false;
+    }
+
+    final List<int> coeficientes = [2, 1, 2, 1, 2, 1, 2, 1, 2];
+    final List<int> digitos = cedula.split('').map(int.parse).toList();
+
+    int suma = 0;
+    for (int i = 0; i < 9; i++) {
+      int valor = digitos[i] * coeficientes[i];
+      if (valor >= 10) valor -= 9;
+      suma += valor;
+    }
+
+    final digitoVerificador = (10 - (suma % 10)) % 10;
+
+    return digitoVerificador == digitos[9];
+  }
 
 }
 

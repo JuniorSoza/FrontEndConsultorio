@@ -33,7 +33,7 @@ class OdontologiaMenu extends StatelessWidget {
                 child: Text('Menú Odontología',
                     style: TextStyle(color: Colors.white, fontSize: 24)),
               ),
-              ...menuItems.map((item) => _buildTile(context, item)).toList(),
+              ...menuItems.map((item) => _buildTile(context, item)),
             ],
           );
   }
