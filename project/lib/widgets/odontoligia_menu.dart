@@ -11,11 +11,14 @@ class OdontologiaMenu extends StatelessWidget {
   });
 
   final menuItems = const [
-    {'icon': Icons.person, 'title': 'Historia Clínica'},
+    {'icon': Icons.person, 'title': 'Pacientes'},
+    {'icon': Icons.person, 'title': 'Paciente'},
+    {'icon': Icons.person, 'title': 'Historia Clinica'},
     {'icon': Icons.calendar_today, 'title': 'Citas'},
+    {'icon': Icons.calendar_today, 'title': 'Agendar Citas'},
     {'icon': Icons.healing, 'title': 'Tratamientos'},
-    {'icon': Icons.receipt, 'title': 'Facturación'},
-    {'icon': Icons.inventory, 'title': 'Inventario'},
+    //{'icon': Icons.receipt, 'title': 'Facturación'},
+    //{'icon': Icons.inventory, 'title': 'Inventario'},
     {'icon': Icons.settings, 'title': 'Configuración'},
   ];
 

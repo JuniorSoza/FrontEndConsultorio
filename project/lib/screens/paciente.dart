@@ -1,17 +1,18 @@
+import 'dart:convert';
 
-//import 'dart:convert';
-//import 'package:rflutter_alert/rflutter_alert.dart';
-//import 'package:sn_progress_dialog/sn_progress_dialog.dart';
-
+import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:odontologo/object/create_patient.dart';
+import 'package:odontologo/object/patient.dart';
+import 'package:odontologo/screens/button_back.dart';
+import 'package:odontologo/services/mayusculas.dart';
 import 'package:odontologo/variables_globales.dart';
 import 'package:odontologo/widgets/toast_msg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:responsive_grid/responsive_grid.dart';
-//import 'package:http/http.dart' as http;
-import 'package:flutter_dropdown_x/flutter_dropdown_x.dart';
-import 'package:flutter_expandable_widget/flutter_expandable_widget.dart';
-
+import 'package:http/http.dart' as http;
+import 'package:expandable_fab_lite/expandable_fab_lite.dart';
+import 'package:sn_progress_dialog/progress_dialog.dart';
 
 class Paciente extends StatefulWidget {
   const Paciente({super.key});
@@ -21,47 +22,93 @@ class Paciente extends StatefulWidget {
   _PacienteScreen createState() => _PacienteScreen();
 }
 
-
 class _PacienteScreen extends State<Paciente>{
+  //Offset _menuPosition = const Offset(300, 500); // Posición inicial del botón
 
-TextEditingController cedulaController = TextEditingController();
-TextEditingController nombresController = TextEditingController();
-TextEditingController apellidosController = TextEditingController();
-TextEditingController correoController = TextEditingController();
-TextEditingController fechaNacimientoController = TextEditingController();
-TextEditingController edadController = TextEditingController();
-TextEditingController direccionController = TextEditingController();
-TextEditingController telefonosController = TextEditingController();
-TextEditingController generoController = TextEditingController();
-int id = 0;
+  final TextEditingController _idController = TextEditingController();
+  TextEditingController tipoDocController = TextEditingController();
+  TextEditingController cedulaController = TextEditingController();
+  TextEditingController nombresController = TextEditingController();
+  TextEditingController apellidosController = TextEditingController();
+  TextEditingController correoController = TextEditingController();
+  TextEditingController fechaNacimientoController = TextEditingController();
+  TextEditingController edadController = TextEditingController();
+  TextEditingController direccionController = TextEditingController();
+  TextEditingController telefonosController = TextEditingController();
+  TextEditingController generoController = TextEditingController();
+  TextEditingController estadoCivilController = TextEditingController();
+  TextEditingController tipoSangreController = TextEditingController();
+  TextEditingController ocupacionReferenciaController = TextEditingController();
 
-// datos adicionales
-ExpandableWidgetController expandableWidgetController = ExpandableWidgetController();
-ExpandableWidgetController expandableWidgetController2 = ExpandableWidgetController();
-ExpandableWidgetController expandableWidgetController3 = ExpandableWidgetController();
+  int id = 0;
+  bool isReadOnly = false;
+  String? _valueGenero='X';
+  String? _valueTipoDoc='0';
+  String? _valueEstadoCivil='0';
+  String? _valueTipoSangre='0';
+  bool _isGrabado = false;
 
-TextEditingController enfermedadesController = TextEditingController();
-TextEditingController medicamentoController = TextEditingController();
-TextEditingController alergiasController = TextEditingController();
-TextEditingController intoleranciasController = TextEditingController();
-TextEditingController intervencionesqController = TextEditingController();
-TextEditingController habitosToxicosController = TextEditingController();
-TextEditingController estadoGeneralController = TextEditingController();
+final List<Map<String, String>> _genero = [
+  {'codigo': 'X', 'descripcion': '-- Sin Selección --'},
+  {'codigo': 'M', 'descripcion': 'Masculino'},
+  {'codigo': 'F', 'descripcion': 'Femenino'},
+ ];
 
+final List<Map<String, String>> _tipoDoc =  [
+  {'codigo': '0', 'descripcion': '-- Sin Selección --'},
+  {'codigo': '1', 'descripcion': 'CÉDULA'},
+  {'codigo': '2', 'descripcion': 'RUC'},
+  {'codigo': '3', 'descripcion': 'PASAPORTE'},
+  {'codigo': '4', 'descripcion': 'CONSUMIDOR FINAL'},
+  {'codigo': '5', 'descripcion': 'ID DEL EXTERIOR'},
+  {'codigo': '6', 'descripcion': 'PLACA'},
+];
 
-bool isReadOnly = false;
-String? _valueGenero;
-final List _genero = generos;
+final List<Map<String, String>> _estadoCivil =  [
+  {'codigo': '0', 'descripcion': '-- Sin Selección --'},
+  {'codigo': '1', 'descripcion': 'No Se Conoce'},
+  {'codigo': '2', 'descripcion': 'Soltero(a)'},
+  {'codigo': '3', 'descripcion': 'Casado(a)'},
+  {'codigo': '4', 'descripcion': 'Viudo(a)'},
+  {'codigo': '5', 'descripcion': 'Divorciado(a)'},
+  {'codigo': '6', 'descripcion': 'Unión Libre'},
+];
 
-RegExp  get _emailRegex => RegExp (r'^.+@[a-zA-Z]+\.{1}[a-zA-Z]+(\.{0,1}[a-zA-Z]+)$');
+final List<Map<String, String>> _tipoSangre =  [
+  {'codigo': '0', 'descripcion': '-- Sin Selección --'},
+  {'codigo': '1', 'descripcion': 'A+'},
+  {'codigo': '2', 'descripcion': 'A-'},
+  {'codigo': '3', 'descripcion': 'B+'},
+  {'codigo': '4', 'descripcion': 'B-'},
+  {'codigo': '5', 'descripcion': 'O+'},
+  {'codigo': '6', 'descripcion': 'O-'},
+  {'codigo': '7', 'descripcion': 'AB+'},
+  {'codigo': '8', 'descripcion': 'AB-'},
+];
+
+// Expresión regular estándar para correos electrónicos válidos
+final RegExp _emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+// para validación del formulario
+final _formKey = GlobalKey<FormState>();
 
 @override
 void initState() {
   _limpiarVar();
   super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final int? idPatient = ModalRoute.of(context)?.settings.arguments as int?;
+
+    if (idPatient != null) {
+      // Actualiza el controlador del ID con el valor recibido
+      _idController.text = idPatient.toString();
+      _cargarDatos(idPatient);
+    }
+  });
 }
 
 void _limpiarVar() {
+  _idController.text='0';
+  tipoDocController.text='';
   cedulaController.text='';
   nombresController.text = '';
   apellidosController.text = '';
@@ -71,103 +118,311 @@ void _limpiarVar() {
   direccionController.text = '';
   telefonosController.text = '';
   generoController.text = '0';
-  _valueGenero = '';
+  estadoCivilController.text = '';
+  ocupacionReferenciaController.text='';
+  tipoSangreController.text = '';
+
+  _valueGenero = 'X';
+  _valueTipoDoc='0';
+  _valueEstadoCivil='0';
+  _valueTipoSangre='0';
   id = 0;
   isReadOnly = false;
+  _isGrabado = false;
+}
+
+void actualizarEdad(DateTime fechaNacimiento, TextEditingController edadController) {
+  final today = DateTime.now();
+  int edad = today.year - fechaNacimiento.year;
+  if (today.month < fechaNacimiento.month ||
+      (today.month == fechaNacimiento.month && today.day < fechaNacimiento.day)) {
+    edad--;
+  }
+  setState(() {
+    edadController.text = edad.toString();
+  });
+}
+
+bool soloLetras(String texto) {
+  return RegExp(r"^[A-ZÑÁÉÍÓÚÜ\s]+$").hasMatch(texto.toUpperCase());
+}
+
+bool esPantallaGrande(BuildContext context) {
+  return MediaQuery.of(context).size.width >= 600;
+}
+
+bool validarCedulaEcuatoriana(String cedula) {
+  if (cedula.length != 10) return false;
+  final province = int.tryParse(cedula.substring(0, 2));
+  final thirdDigit = int.tryParse(cedula[2]);
+
+  if (province == null || thirdDigit == null || province < 1 || province > 24 || thirdDigit >= 6) {
+    return false;
+  }
+
+  int suma = 0;
+  for (var i = 0; i < 9; i++) {
+    int num = int.parse(cedula[i]);
+    if (i % 2 == 0) {
+      num *= 2;
+      if (num > 9) num -= 9;
+    }
+    suma += num;
+  }
+
+  final digitoVerificador = (10 - (suma % 10)) % 10;
+  return digitoVerificador == int.parse(cedula[9]);
+}
+
+void _guardarDatos() async {
+  if (_formKey.currentState?.validate() ?? false) {
+    // ✅ Formulario válido, guardar datos
+    ProgressDialog pr = ProgressDialog(context: context);
+    pr.show(max: 600, msg: 'Procesando Grabar...');
+
+    CreatePatient objPatient = CreatePatient(
+      documentTypeId: tipoDocController.text,
+      documentId: cedulaController.text,
+      name: nombresController.text,
+      lastName: apellidosController.text,
+      phone: telefonosController.text,
+      address: direccionController.text,
+      email: correoController.text,
+      birthDate: DateTime.parse(fechaNacimientoController.text),
+      gender: generoController.text,
+      maritalStatusId: estadoCivilController.text,
+      bloodTypeId: tipoSangreController.text,
+      occupation: ocupacionReferenciaController.text
+    );
+
+    var headersList = map;
+    final headers = {
+      'Authorization': 'Bearer $token',
+    };
+    headersList.addAll(headers);
+
+    var url = Uri.parse('$baseUrl/api/patients');
+
+    try {
+      final res = await http.post(url, headers: headersList, body: jsonEncode(objPatient));
+      
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        Patient patient = Patient.fromJson(jsonDecode(res.body));
+
+        setState(() {
+          _idController.text = patient.id.toString();
+          _isGrabado = true;
+        });
+      }
+      pr.close();
+    } on Exception catch (e) {
+      pr.close();
+      AwesomeDialog(
+        // ignore: use_build_context_synchronously
+        context: context,
+        animType: AnimType.bottomSlide,
+        dialogType: DialogType.error,
+        title: 'Odontológico',
+        desc: e.toString(),
+        btnOkText: 'Cerrar',
+        btnOkOnPress: () {},
+      ).show();
+    }
+
+  } else {
+    // ❌ Formulario inválido, mostrar error
+    ToastMSG.showError(context, 'Por favor, complete el formulario', 2);
+/*     ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Por favor, complete el formulario')),
+    ); */
+  }
+}
+
+void _updateDatos() async {
+  if (_formKey.currentState?.validate() ?? false) {
+    // ✅ Formulario válido, guardar datos
+    ProgressDialog pr = ProgressDialog(context: context);
+    pr.show(max: 600, msg: 'Procesando Actualización...');
+
+    CreatePatient objPatient = CreatePatient(
+      documentTypeId: tipoDocController.text,
+      documentId: cedulaController.text,
+      name: nombresController.text,
+      lastName: apellidosController.text,
+      phone: telefonosController.text,
+      address: direccionController.text,
+      email: correoController.text,
+      birthDate: DateTime.parse(fechaNacimientoController.text),
+      gender: generoController.text,
+      maritalStatusId: estadoCivilController.text,
+      bloodTypeId: tipoSangreController.text,
+      occupation: ocupacionReferenciaController.text
+    );
+
+    var headersList = map;
+    final headers = {
+      'Authorization': 'Bearer $token',
+    };
+    headersList.addAll(headers);
+
+    var url = Uri.parse('$baseUrl/api/patients/${_idController.text}');
+
+    try {
+      final res = await http.put(url, headers: headersList, body: jsonEncode(objPatient));
+      
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        Patient patient = Patient.fromJson(jsonDecode(res.body));
+
+        setState(() {
+          _idController.text = patient.id.toString();
+          _isGrabado = true;
+        });
+      }
+      pr.close();
+    } on Exception catch (e) {
+      pr.close();
+      AwesomeDialog(
+        // ignore: use_build_context_synchronously
+        context: context,
+        animType: AnimType.bottomSlide,
+        dialogType: DialogType.error,
+        title: 'Odontológico',
+        desc: e.toString(),
+        btnOkText: 'Cerrar',
+        btnOkOnPress: () {},
+      ).show();
+    }
+
+  } else {
+    // ❌ Formulario inválido, mostrar error
+    ToastMSG.showError(context, 'Por favor, complete el formulario', 2);
+/*     ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Por favor, complete el formulario')),
+    ); */
+  }
+}
+
+Future<void> _cargarDatos(int id) async {
+  ProgressDialog pr = ProgressDialog(context: context);
+  pr.show(max: 600, msg: 'Procesando Consulta...');
+
+  var headersList = map;
+  final headers = {
+    'Authorization': 'Bearer $token',
+  };
+  headersList.addAll(headers);
+  var url = Uri.parse('$baseUrl/api/patients/$id');
+
+  try {
+    final res = await http.get(url, headers: headersList);
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      Patient patient = Patient.fromJson(jsonDecode(res.body));
+      
+      setState(() {
+        // actualiza campos de la pantalla con el codigo existente
+        tipoDocController.text = patient.documentTypeId;
+        cedulaController.text = patient.documentId;
+        apellidosController.text = patient.lastName;
+        nombresController.text = patient.name;
+        direccionController.text = patient.address;
+        correoController.text = patient.email;
+        generoController.text = patient.gender;
+        fechaNacimientoController.text = patient.birthDate.toString().substring(0,10);
+        actualizarEdad(DateTime.parse(fechaNacimientoController.text), edadController);
+        estadoCivilController.text = patient.maritalStatusId;
+        telefonosController.text = patient.phone;
+        tipoSangreController.text = patient.bloodTypeId;
+        ocupacionReferenciaController.text = patient.occupation;
+        // valores de dropdown
+        _valueTipoDoc = tipoDocController.text;
+        _valueGenero = generoController.text;
+        _valueEstadoCivil = estadoCivilController.text;
+        _valueTipoSangre = tipoSangreController.text;
+
+      });
+    } 
+    pr.close();
+  } on Exception catch (e) {
+    pr.close();
+    AwesomeDialog(
+      // ignore: use_build_context_synchronously
+      context: context,
+      animType: AnimType.bottomSlide,
+      dialogType: DialogType.error,
+      title: 'Odontológico',
+      desc: e.toString(),
+      btnOkText: 'Cerrar',
+      btnOkOnPress: () {},
+    ).show();
+  }
+}
+
+@override
+void dispose() {
+  _idController.dispose();
+  tipoDocController.dispose();
+  cedulaController.dispose();
+  nombresController.dispose();
+  apellidosController.dispose();
+  correoController.dispose();
+  fechaNacimientoController.dispose();
+  edadController.dispose();
+  direccionController.dispose();
+  telefonosController.dispose();
+  generoController.dispose();
+  estadoCivilController.dispose();
+  tipoSangreController.dispose();
+  ocupacionReferenciaController.dispose();
+  super.dispose();
 }
 
 @override
 Widget build(BuildContext context) {
   return Scaffold(
-    appBar: AppBar(title: Text('Historia Clínica', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),),
-                  leading: buttonBack(context),
-                ), 
+    appBar: AppBar(title: Text(_idController.text!='0' ? 'Datos General Paciente Edit (${_idController.text})': 'Datos General Paciente New', 
+                              style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                  leading: ButtonBack(),
+                  ), 
     
-    body: Column(
+    floatingActionButton: ExpandableFab(
+      fabMargin: 8,
+      icon: Icon(Icons.menu),
       children: [
-        ResponsiveGridRow(
-          children: [
-            ResponsiveGridCol(
-              xl: 2,
-              lg: 2,
-              md: 4,
-              sm: 12,
-              xs: 12,
-              child: _cedulaPaciente(), 
-            ),
-            ResponsiveGridCol(
-              xl: 5,
-              lg: 5,
-              md: 4,
-              sm: 12,
-              xs: 12,
-              child: _nombresPaciente(),
-            ),
-            ResponsiveGridCol(
-              xl: 5,
-              lg: 5,
-              md: 4,
-              sm: 12,
-              xs: 12,
-              child: _direccionPaciente(), 
-            ),
-          ],
-        ),
-        
-        ResponsiveGridRow(
-          children: [
-            ResponsiveGridCol(
-              xl: 5,
-              lg: 5,
-              md: 4,
-              sm: 12,
-              xs: 12,
-              child: _correoPaciente(),
-            ),
+        ActionButton(
+            icon: const Icon(Icons.save_as_outlined),
+            color: Colors.lightBlue,
+            onPressed: () async { 
+              setState(() {
+                _isGrabado = false;
+              });
+              if (_idController.text=='0') {
+                _guardarDatos();
+              } else {
+                _updateDatos();
+              }
+              
+              if (_idController.text!='0' && _isGrabado) {
+                ToastMSG.showInfo(context, 'Paciente Guardado Correctamente...Código Interno ${_idController.text}', 2);
+              } 
+            }),
+        ActionButton(
+            icon: const Icon(Icons.clear_all_sharp),
+            color: Colors.lightBlue,
+            onPressed: (){ ToastMSG.showInfo(context, 'Impresión En Construcción', 2); }),
+        ActionButton(
+            icon: const Icon(Icons.arrow_circle_left_outlined),
+            color: Colors.lightBlue,
+            onPressed: (){ Navigator.pop(context); })
+      ],
+    ),
+    floatingActionButtonLocation: MediaQuery.of(context).size.width >1200 ? FloatingActionButtonLocation.centerDocked : FloatingActionButtonLocation.endDocked,
 
-            ResponsiveGridCol(
-                lg: 2,
-                xl: 2,
-                md: 3,
-                sm: 5,
-                xs: 5,
-                child: _fechaNacimiento(context)
-            ),
-                                          
-            ResponsiveGridCol(
-                lg: 2,
-                xl: 2,
-                md: 2,
-                sm: 2,
-                xs: 2,
-                child: _edadPaciente()
-            ),
-
-            ResponsiveGridCol(
-                lg: 3,
-                xl: 3,
-                md: 3,
-                sm: 5,
-                xs: 5,
-                child: _dropdownButtonGenero()
-            ),
-        ],
-        ),
-
-        ResponsiveGridRow(
-          children: [
-            ResponsiveGridCol(
-              xl: 5,
-              lg: 5,
-              md: 4,
-              sm: 12,
-              xs: 12,
-              child: _telefonoPaciente(),
-            ),
-          ]
-          ),
-
-        Expanded(
+    body: Stack(
+      children: [ 
+        Form(
+          key: _formKey,
           child: SingleChildScrollView(
             scrollDirection: Axis.vertical,
             child: Column(
@@ -175,734 +430,616 @@ Widget build(BuildContext context) {
                 ResponsiveGridRow(
                   children: [
                     ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
+                      xl: 3,
+                      lg: 3,
+                      md: 4,
+                      sm: 5,
+                      xs: 5,
+                      child: dropdownTipoDocField(context: context, valueTipoDoc: _valueTipoDoc, tipoDocList: _tipoDoc),  
+                    ),
+                    ResponsiveGridCol(
+                      xl: 5,
+                      lg: 5,
+                      md: 8,
+                      sm: 7,
+                      xs: 7,
+                      child: cedulaPacienteField(context, cedulaController),  
+                    ),
+                  ],
+                ),
+                ResponsiveGridRow(
+                  children: [
+                    ResponsiveGridCol(
+                      xl: 4,
+                      lg: 4,
+                      md: 6,
                       sm: 12,
                       xs: 12,
-                      child: listViewExpandableWidget(),
-                     ),
+                      child: apellidosPacienteField(context, apellidosController), 
+                    ),
+                    ResponsiveGridCol(
+                      xl: 4,
+                      lg: 4,
+                      md: 6,
+                      sm: 12,
+                      xs: 12,
+                      child: nombresPacienteField(context, nombresController), 
+                    ),
                   ]
-                
+                ),
+                ResponsiveGridRow(
+                  children: [
+                    ResponsiveGridCol(
+                      xl: 4,
+                      lg: 4,
+                      md: 6,
+                      sm: 12,
+                      xs: 12,
+                      child: direccionPacienteField(context, direccionController),  
+                    ),
+                    ResponsiveGridCol(
+                      xl: 4,
+                      lg: 4,
+                      md: 6,
+                      sm: 12,
+                      xs: 12,
+                      child: correoPacienteField(context, correoController), 
+                    ),
+                  ]
+                ),
+                ResponsiveGridRow(
+                  children: [
+                    ResponsiveGridCol(
+                        lg: 3,
+                        xl: 3,
+                        md: 4,
+                        sm: 5,
+                        xs: 5,
+                        child: dropdownGeneroField(context: context, valueGenero: _valueGenero, generoList: _genero) , //_dropdownButtonGenero()
+                    ),
+                    ResponsiveGridCol(
+                        lg: 3,
+                        xl: 3,
+                        md: 6,
+                        sm: 5,
+                        xs: 5,
+                        child: fechaNacimientoField(context: context, fechaNacimientoController: fechaNacimientoController) , //_fechaNacimiento(context)
+                    ),
+                    ResponsiveGridCol(
+                        lg: 2,
+                        xl: 2,
+                        md: 2,
+                        sm: 2,
+                        xs: 2,
+                        child: edadPacienteField(context, edadController) , //_edadPaciente()
+                    ),
+                  ],
+                ),
+                ResponsiveGridRow(
+                  children: [
+                    ResponsiveGridCol(
+                      xl: 3,
+                      lg: 3,
+                      md: 4,
+                      sm: 5,
+                      xs: 5,
+                      child: dropdownEstadoCivilField(context: context, valueEstadoCivil: _valueEstadoCivil, estadoCivilList: _estadoCivil) , 
+                    ),
+                    ResponsiveGridCol(
+                      xl: 5,
+                      lg: 5,
+                      md: 8,
+                      sm: 7,
+                      xs: 7,
+                      child: telefonoPacienteField(context, telefonosController) , 
+                    ),
+                  ]
+                ),
+                ResponsiveGridRow(
+                  children: [
+                    ResponsiveGridCol(
+                      xl: 3,
+                      lg: 3,
+                      md: 4,
+                      sm: 5,
+                      xs: 5,
+                      child: dropdownTipoSangreField(context: context, valueTipoSangre: _valueTipoSangre, tipoSangreList: _tipoSangre ), 
+                    ),
+                    ResponsiveGridCol(
+                      xl: 5,
+                      lg: 5,
+                      md: 8,
+                      sm: 7,
+                      xs: 7,
+                      child: ocupacionReferenciaField(context, ocupacionReferenciaController) , 
+                    ),
+                  ]
                 ),
               ],
             ),
           ),
         ),
-
       ],
     ),
   );
-}
-
-Tooltip buttonBack(BuildContext context) {
-  return Tooltip(message: 'Back',
-                  child: TextButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Image.asset('assets/images/icons8_64.png', width: 20, height: 20,),
-                    label: const Text('Back', style: TextStyle(color: Colors.white),),
-                    style: TextButton.styleFrom(foregroundColor: Colors.white,),
-                  ),
-                );
-}
-
-SizedBox listViewExpandableWidget() {
-  return SizedBox(
-    height: 500.0, // Aumenta la altura según necesidad
-    width: MediaQuery.of(context).size.width,
-    child: ListView(
-            children: [
-              antecedentesMedicos(),
-              const SizedBox(height: 10),
-
-              antecedentesDentales(),
-              const SizedBox(height: 10),
-
-              sintomasActuales(),
-
-            ],
-          ),
-  );
-}
-
-ExpandableWidget sintomasActuales() {
-  return ExpandableWidget(
-              title: const Text('Síntomas Actuales'),
-              decoration: const BoxDecoration(color: Color.fromARGB(255, 202, 207, 209)),
-              trailingPosition: TrailingPosition.left,
-              trailing: const Icon(Icons.arrow_circle_up_outlined),
-              expansionDirection: ExpansionDirection.expandUp,
-              controller: expandableWidgetController3,
-              children: [
-                ResponsiveGridRow(
-                  children: [
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _enfermedadesPaciente(), 
-                    ),
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _medicamentosPaciente(), 
-                    ),                  
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _alergiasPaciente(), 
-                    ),                  
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _intoleraciasPaciente(), 
-                    ),                                    
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _intervencionesPaciente(), 
-                    ),                  
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _habitosToxicosPaciente(), 
-                    ),
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _estadoGeneralPaciente(), 
-                    ),
-
-                  ]
-                ),
-              ],
-            );
-}
-
-ExpandableWidget antecedentesDentales() {
-  return ExpandableWidget(
-              title: const Text('Antecedentes Dentales'),
-              decoration: const BoxDecoration(color: Color.fromARGB(255, 203, 235, 166)),
-              trailingPosition: TrailingPosition.left,
-              trailing: const Icon(Icons.arrow_circle_up_outlined),
-              controller: expandableWidgetController2,
-              children: [
-                ResponsiveGridRow(
-                  children: [
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _enfermedadesPaciente(), 
-                    ),
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _medicamentosPaciente(), 
-                    ),                  
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _alergiasPaciente(), 
-                    ),                  
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _intoleraciasPaciente(), 
-                    ),                                    
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _intervencionesPaciente(), 
-                    ),                  
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _habitosToxicosPaciente(), 
-                    ),
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _estadoGeneralPaciente(), 
-                    ),
-
-                  ]
-                ),
-              ],
-            );
-}
-
-ExpandableWidget antecedentesMedicos() {
-  return ExpandableWidget(
-              title: const Text('Antecedentes Médicos'),
-              decoration: const BoxDecoration(color: Color.fromARGB(255, 193, 228, 245)),
-              trailingPosition: TrailingPosition.left,
-              trailing: const Icon(Icons.arrow_circle_up_outlined),
-              controller: expandableWidgetController,
-              children: [
-                ResponsiveGridRow(
-                  children: [
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _enfermedadesPaciente(), 
-                    ),
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _medicamentosPaciente(), 
-                    ),                  
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _alergiasPaciente(), 
-                    ),                  
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _intoleraciasPaciente(), 
-                    ),                                    
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _intervencionesPaciente(), 
-                    ),                  
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _habitosToxicosPaciente(), 
-                    ),
-                    ResponsiveGridCol(
-                      xl: 12,
-                      lg: 12,
-                      md: 12,
-                      sm: 12,
-                      xs: 12,
-                      child: _estadoGeneralPaciente(), 
-                    ),
-
-                  ]
-                ),
-              ],
-            );
+  
 }
 
 // datos personales
-Padding _fechaNacimiento(BuildContext context) {
-  return Padding(
-    padding: const EdgeInsets.all(4.0),
-    child: TextFormField(
-        controller: fechaNacimientoController,
-        readOnly: true,
-        keyboardType: TextInputType.datetime,
-        validator: (value) {
-          return (value != null && value.isNotEmpty)
-              ? null
-              : 'Debe ingresar una fecha válida';
-        },
-        onChanged: (value) {
-          setState(() {
-    
-          });
-        },
-        onTap: () async {
-          DateTime? pickedDate =
-          await showDatePicker(
-              context: context,
-              initialDate: DateTime.now(),
-              firstDate: DateTime(1950),
-              lastDate: DateTime(2050));
-    
-          if (pickedDate != null) {
-            String formattedDate = pickedDate.toString().substring(0,10);
-            setState(() {
-              fechaNacimientoController.text = formattedDate;
-              //_valueFecha = formattedDate;
-            });
-          } else {
-            fechaNacimientoController.clear();
-          }
-        },
-        decoration: InputDecoration(
-          labelText: 'Fecha Nacimiento',
-          labelStyle: const TextStyle(color: Colors.grey),
-          icon: const Icon(Icons.cake_rounded),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0),),),
 
-        ),
+Widget dropdownTipoDocField({required BuildContext context, required String? valueTipoDoc, required List<Map<String, String>> tipoDocList,}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+    child: DropdownButtonFormField<String>(
+      value: valueTipoDoc,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'Tipo Doc',
+        hintText: '-- Sin selección --',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+        prefixIcon: esPantallaGrande(context) ? const Icon(Icons.document_scanner) : null,
+        labelStyle: TextStyle(color: Theme.of(context).hintColor),
       ),
-  );
-}
-
-Padding _edadPaciente() {
-  return Padding(
-    padding: const EdgeInsets.all(4.0),
-    child: TextFormField(
-        controller: edadController,
-        showCursor: false,
-        readOnly: true,
-        decoration: InputDecoration(
-          labelText: 'Edad',
-          labelStyle: const TextStyle(color: Colors.grey),
-          //icon: const Icon(Icons.account_box_sharp),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)),),
-        ),
-        textAlign: TextAlign.right,
-        inputFormatters: <TextInputFormatter> [FilteringTextInputFormatter.digitsOnly],
-      ),
-  );
-}
-
-Padding _cedulaPaciente() {
-  return Padding(
-    padding: const EdgeInsets.all(4.0),
-    child: TextFormField(
-        controller: cedulaController,
-        showCursor: true,
-        maxLength: 10,
-        decoration: InputDecoration(
-          labelText: 'Cédula',
-          counterText: "",
-          labelStyle: const TextStyle(color: Colors.grey),
-          icon: const Icon(Icons.account_box_sharp),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)),),
-          suffixIcon: IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () async {
-              ToastMSG.showInfo(context, 'Buscando Paciente...', 2);
-            },
-          ),          
-        ),
-        textAlign: TextAlign.left,
-        validator: (value) {
-             final intNumber=int.tryParse(value!);
-                  if (value.isEmpty || intNumber! <= 10) {
-                    return 'Campo vacio o no es un número Cédula';
-                  }
-                  return null;
-                },
-        inputFormatters: <TextInputFormatter> [FilteringTextInputFormatter.digitsOnly],
-        onChanged: (value) {
-
-        },
-      ),
-  );
-}
-
-Padding _nombresPaciente() {
-  return Padding(
-    padding: const EdgeInsets.all(4.0),
-    child: TextFormField(
-        controller: nombresController,
-        maxLength: 100,
-        showCursor: true,
-        inputFormatters: <TextInputFormatter>[
-              UpperCaseTextFormatter()
-            ],
-        decoration: InputDecoration(
-          labelText: 'Nombres/Apellidos',
-          counterText: "",
-          labelStyle: const TextStyle(color: Colors.grey),
-          icon: const Icon(Icons.co_present_rounded),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)),),
-        ),
-        textAlign: TextAlign.left,
-        onChanged: (value) {
-
-        },
-      ),
-  );
-}
-
-Padding _direccionPaciente() {
-  return Padding(
-    padding: const EdgeInsets.all(4.0),
-    child: TextFormField(
-        controller: direccionController,
-        maxLength: 200,
-        showCursor: true,
-        inputFormatters: <TextInputFormatter>[
-              UpperCaseTextFormatter()
-            ],
-        decoration: InputDecoration(
-          labelText: 'Dirección',
-          counterText: "",
-          labelStyle: const TextStyle(color: Colors.grey),
-          icon: const Icon(Icons.home_rounded),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)),),
-        ),
-        textAlign: TextAlign.left,
-        onChanged: (value) {
-
-        },
-      ),
-  );
-}
-
-Padding _correoPaciente() {
-  return Padding(
-    padding: const EdgeInsets.all(4.0),
-    child: TextFormField(
-        controller: correoController,
-        maxLength: 100,
-        showCursor: true,
-        decoration: InputDecoration(
-          labelText: 'email',
-          counterText: "",
-          labelStyle: const TextStyle(color: Colors.grey),
-          icon: const Icon(Icons.alternate_email),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)),),
-        ),
-        textAlign: TextAlign.left,
-        validator: (value) {
-          if (!_emailRegex.hasMatch(value!)) { 
-            ToastMSG.showError(context, 'La dirección de correo electrónico no es válida', 2);
-          }
-          return null;
-        },
-        onChanged: (value) {
-
-        },
-      ),
-  );
-}
-
-Padding _dropdownButtonGenero() {
-  return Padding(
-    padding: const EdgeInsets.all(4.0),
-    child: DropDownField(
-      titleText: 'Genero',
-      value: _valueGenero,
-      dataSource: _genero,
+      items: tipoDocList
+          .map((item) => DropdownMenuItem<String>(
+                value: item['codigo'],
+                child: Text(item['descripcion'] ?? ''),
+              ))
+          .toList(),
       onChanged: (value) {
         setState(() {
-          generoController.text = value;
-          _valueGenero = value;
+          _valueTipoDoc = value;
+          tipoDocController.text = value ?? '';
         });
       },
-      textField: 'descripcion',
-      valueField: 'codigo',
-      hintText: '-- Sin selección --',
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Seleccione un Tipo Documento';
+        }
+        return null;
+      },
     ),
   );
 }
 
-Padding _telefonoPaciente() {
+Widget cedulaPacienteField(BuildContext context, TextEditingController cedulaController) {
   return Padding(
-    padding: const EdgeInsets.all(4.0),
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
     child: TextFormField(
-        controller: telefonosController,
-        maxLength: 50,
-        showCursor: true,
-        inputFormatters: <TextInputFormatter>[
-              UpperCaseTextFormatter()
-            ],
-        decoration: InputDecoration(
-          labelText: 'Teléfono(s)',
-          counterText: "",
-          labelStyle: const TextStyle(color: Colors.grey),
-          icon: const Icon(Icons.phonelink_ring),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)),),
+      controller: cedulaController,
+      showCursor: true,
+      maxLength: 10,
+      keyboardType: tipoDocController.text=='1' ? TextInputType.number: TextInputType.text,
+      decoration: InputDecoration(
+        labelText: 'Id Documento',
+        counterText: "",
+        labelStyle: TextStyle(color: Theme.of(context).hintColor),
+        prefixIcon: const Icon(Icons.account_box_sharp),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
         ),
-        textAlign: TextAlign.left,
-        onChanged: (value) {
-
-        },
+        suffixIcon: _idController.text=='0' ? null : IconButton(
+          icon: const Icon(Icons.search),
+          onPressed: () async {
+            FocusScope.of(context).unfocus(); // Cierra el teclado
+            ToastMSG.showInfo(context,'Buscando Paciente...', 2);
+            _cargarDatos(_idController.text as int);
+          },
+        ),
       ),
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      textAlign: TextAlign.left,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Ingrese una cédula';
+        }
+        if (tipoDocController.text=='1') {
+          if (!validarCedulaEcuatoriana(value.toString().trim())) {
+            return 'Cédula inválida';
+          }
+        }
+        return null;
+      },
+      onChanged: (value) {
+        // Aquí puedes agregar lógica reactiva si necesitas
+      },
+    ),
   );
 }
 
-// datos antecedentes medicos
-Padding _enfermedadesPaciente() {
+Widget apellidosPacienteField(BuildContext context, TextEditingController apellidosController) {
   return Padding(
-    padding: const EdgeInsets.all(4.0),
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
     child: TextFormField(
-        controller: enfermedadesController,
-        maxLength: 200,
-        showCursor: true,
-        inputFormatters: <TextInputFormatter>[
-              UpperCaseTextFormatter()
-            ],
-        decoration: InputDecoration(
-          labelText: 'Enfermedades',
-          counterText: "",
-          labelStyle: const TextStyle(color: Colors.grey),
-          icon: const Icon(Icons.medical_information_outlined),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)),),
+      controller: apellidosController,
+      showCursor: true,
+      maxLength: 100,
+      textCapitalization: TextCapitalization.words,
+      inputFormatters: [UpperCaseTextFormatter()],
+      decoration: InputDecoration(
+        labelText: 'Apellidos',
+        counterText: "",
+        labelStyle: TextStyle(color: Theme.of(context).hintColor),
+        prefixIcon: const Icon(Icons.co_present_rounded),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
         ),
-        textAlign: TextAlign.left,
-        onChanged: (value) {
-
-        },
       ),
+      textAlign: TextAlign.left,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Ingrese Apellidos';
+        }
+        if (value.trim().length < 5) {
+          return 'Debe tener al menos 5 caracteres';
+        }
+        if (!soloLetras(value.trim())) {
+          return 'Solo letras permitidas';
+        }
+        return null;
+      },
+      onChanged: (value) {
+        // Puedes colocar lógica reactiva aquí si es necesario
+      },
+    ),
   );
 }
 
-Padding _medicamentosPaciente() {
+Widget nombresPacienteField(BuildContext context, TextEditingController nombresController) {
   return Padding(
-    padding: const EdgeInsets.all(4.0),
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
     child: TextFormField(
-        controller: medicamentoController,
-        maxLength: 200,
-        showCursor: true,
-        inputFormatters: <TextInputFormatter>[
-              UpperCaseTextFormatter()
-            ],
-        decoration: InputDecoration(
-          labelText: 'Medicamentos que Toma',
-          counterText: "",
-          labelStyle: const TextStyle(color: Colors.grey),
-          icon: const Icon(Icons.medication_liquid_outlined),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)),),
+      controller: nombresController,
+      showCursor: true,
+      maxLength: 100,
+      textCapitalization: TextCapitalization.words,
+      inputFormatters: [UpperCaseTextFormatter()],
+      decoration: InputDecoration(
+        labelText: 'Nombres',
+        counterText: "",
+        labelStyle: TextStyle(color: Theme.of(context).hintColor),
+        prefixIcon: const Icon(Icons.co_present_rounded),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
         ),
-        textAlign: TextAlign.left,
-        onChanged: (value) {
-
-        },
       ),
+      textAlign: TextAlign.left,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Ingrese nombres';
+        }
+        if (value.trim().length < 5) {
+          return 'Debe tener al menos 5 caracteres';
+        }
+        if (!soloLetras(value.trim())) {
+          return 'Solo letras permitidas';
+        }
+        return null;
+      },
+      onChanged: (value) {
+        // Puedes colocar lógica reactiva aquí si es necesario
+      },
+    ),
   );
 }
 
-Padding _alergiasPaciente() {
+Widget direccionPacienteField(BuildContext context, TextEditingController direccionController) {
   return Padding(
-    padding: const EdgeInsets.all(4.0),
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
     child: TextFormField(
-        controller: alergiasController,
-        maxLength: 200,
-        showCursor: true,
-        inputFormatters: <TextInputFormatter>[
-              UpperCaseTextFormatter()
-            ],
-        decoration: InputDecoration(
-          labelText: 'Alergias',
-          counterText: "",
-          labelStyle: const TextStyle(color: Colors.grey),
-          icon: const Icon(Icons.medication),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)),),
+      controller: direccionController,
+      showCursor: true,
+      maxLength: 200,
+      textCapitalization: TextCapitalization.sentences,
+      inputFormatters: [UpperCaseTextFormatter()],
+      keyboardType: TextInputType.streetAddress,
+      decoration: InputDecoration(
+        labelText: 'Dirección',
+        counterText: "",
+        labelStyle: TextStyle(color: Theme.of(context).hintColor),
+        prefixIcon: const Icon(Icons.home_rounded),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
         ),
-        textAlign: TextAlign.left,
-        onChanged: (value) {
-
-        },
       ),
+      textAlign: TextAlign.left,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Ingrese una dirección válida';
+        }
+        if (value.trim().length < 5) {
+          return 'La dirección es muy corta';
+        }
+        return null;
+      },
+      onChanged: (value) {
+        // Puedes aplicar lógica reactiva aquí si es necesario
+      },
+    ),
   );
 }
 
-Padding _intoleraciasPaciente() {
+Widget correoPacienteField(BuildContext context, TextEditingController correoController) {
   return Padding(
-    padding: const EdgeInsets.all(4.0),
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
     child: TextFormField(
-        controller: intoleranciasController,
-        maxLength: 200,
-        showCursor: true,
-        inputFormatters: <TextInputFormatter>[
-              UpperCaseTextFormatter()
-            ],
-        decoration: InputDecoration(
-          labelText: 'Intolerancias',
-          counterText: "",
-          labelStyle: const TextStyle(color: Colors.grey),
-          icon: const Icon(Icons.menu_book_sharp),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)),),
-        ),
-        textAlign: TextAlign.left,
-        onChanged: (value) {
-
-        },
+      controller: correoController,
+      keyboardType: TextInputType.emailAddress,
+      maxLength: 100,
+      showCursor: true,
+      decoration: InputDecoration(
+        labelText: 'Correo electrónico',
+        hintText: 'ejemplo@dominio.com',
+        counterText: "",
+        labelStyle: TextStyle(color: Theme.of(context).hintColor),
+        prefixIcon: const Icon(Icons.alternate_email),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
       ),
+      textAlign: TextAlign.left,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'El correo es obligatorio';
+        }
+        if (!_emailRegex.hasMatch(value.trim())) {
+          return 'Correo electrónico inválido';
+        }
+        return null;
+      },
+      onChanged: (value) {
+        // Opcional: lógica en tiempo real
+      },
+    ),
   );
 }
 
-Padding _intervencionesPaciente() {
+Widget dropdownGeneroField({required BuildContext context, required String? valueGenero, required List<Map<String, String>> generoList,}) {
   return Padding(
-    padding: const EdgeInsets.all(4.0),
-    child: TextFormField(
-        controller: intervencionesqController,
-        maxLength: 200,
-        showCursor: true,
-        inputFormatters: <TextInputFormatter>[
-              UpperCaseTextFormatter()
-            ],
-        decoration: InputDecoration(
-          labelText: 'Intervenciones Quirúrgicas',
-          counterText: "",
-          labelStyle: const TextStyle(color: Colors.grey),
-          icon: const Icon(Icons.local_hospital_outlined),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)),),
-        ),
-        textAlign: TextAlign.left,
-        onChanged: (value) {
-
-        },
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+    child: DropdownButtonFormField<String>(
+      value: valueGenero,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'Género',
+        hintText: '-- Sin selección --',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+        prefixIcon: const Icon(Icons.transgender),
+        labelStyle: TextStyle(color: Theme.of(context).hintColor),
       ),
+      items: generoList
+          .map((item) => DropdownMenuItem<String>(
+                value: item['codigo'],
+                child: Text(item['descripcion'] ?? ''),
+              ))
+          .toList(),
+      onChanged: (value) {
+        setState(() {
+          _valueGenero = value;
+          generoController.text = value ?? '';
+        });
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Seleccione un género';
+        }
+        return null;
+      },
+    ),
   );
 }
 
-Padding _habitosToxicosPaciente() {
+Widget telefonoPacienteField(BuildContext context, TextEditingController telefonosController) {
   return Padding(
-    padding: const EdgeInsets.all(4.0),
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
     child: TextFormField(
-        controller: habitosToxicosController,
-        maxLength: 200,
-        showCursor: true,
-        inputFormatters: <TextInputFormatter>[
-              UpperCaseTextFormatter()
-            ],
-        decoration: InputDecoration(
-          labelText: 'Hábitos Tóxicos',
-          counterText: "",
-          labelStyle: const TextStyle(color: Colors.grey),
-          icon: const Icon(Icons.crisis_alert),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)),),
+      controller: telefonosController,
+      showCursor: true,
+      maxLength: 50,
+      keyboardType: TextInputType.phone,
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9,\-\s+]')), // solo números, comas, espacios y "+"
+      ],
+      decoration: InputDecoration(
+        labelText: 'Teléfono(s)',
+        counterText: "",
+        labelStyle: TextStyle(color: Theme.of(context).hintColor),
+        prefixIcon: const Icon(Icons.phonelink_ring),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
         ),
-        textAlign: TextAlign.left,
-        onChanged: (value) {
-
-        },
+        hintText: 'Ej: 0991234567, 022345678',
       ),
+      textAlign: TextAlign.left,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Ingrese al menos un número de teléfono';
+        }
+        if (value.length < 7) {
+          return 'Número(s) de teléfono demasiado corto(s)';
+        }
+        return null;
+      },
+      onChanged: (value) {
+        // Lógica adicional si se requiere
+      },
+    ),
   );
 }
 
-Padding _estadoGeneralPaciente() {
+Widget fechaNacimientoField({required BuildContext context, required TextEditingController fechaNacimientoController,}) {
   return Padding(
-    padding: const EdgeInsets.all(4.0),
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
     child: TextFormField(
-        controller: estadoGeneralController,
-        maxLength: 200,
-        showCursor: true,
-        inputFormatters: <TextInputFormatter>[
-              UpperCaseTextFormatter()
-            ],
-        decoration: InputDecoration(
-          labelText: 'Estado General de Salud',
-          counterText: "",
-          labelStyle: const TextStyle(color: Colors.grey),
-          icon: const Icon(Icons.monitor_heart_outlined),
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10.0)),),
-        ),
-        textAlign: TextAlign.left,
-        onChanged: (value) {
-
-        },
+      controller: fechaNacimientoController,
+      readOnly: true,
+      keyboardType: TextInputType.datetime,
+      decoration: InputDecoration(
+        labelText: 'Fecha Nacimiento',
+        hintText: 'Seleccione una fecha',
+        labelStyle: TextStyle(color: Theme.of(context).hintColor),
+        prefixIcon: const Icon(Icons.cake_rounded),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0),),
       ),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Debe ingresar una fecha válida';
+        }
+        return null;
+      },
+      onTap: () async {
+        FocusScope.of(context).unfocus(); // Oculta el teclado si abierto
+        DateTime? pickedDate = await showDatePicker(
+          context: context,
+          initialDate: DateTime.now(), //.subtract(const Duration(days: 365 * 18)), // por defecto, 18 años atrás
+          firstDate: DateTime(1900),
+          lastDate: DateTime.now(),
+          helpText: 'Seleccione fecha de nacimiento',
+        );
+
+        if (pickedDate != null) {
+          String formattedDate = "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
+          fechaNacimientoController.text = formattedDate;
+          actualizarEdad(pickedDate, edadController);
+        }
+      },
+    ),
   );
 }
 
-// datos antecedentes dentales
-
-bool validarDatos() {
-
-  if (validarCedula(cedulaController.text)) {
-    ToastMSG.showInfo(context, 'Cédula válida', 2);
-    //print('Cédula válida');
-  } else {
-    ToastMSG.showInfo(context, 'Cédula inválida', 2);
-    //print('Cédula inválida');
-  }
-  return true;
+Widget edadPacienteField(BuildContext context, TextEditingController edadController) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+    child: TextFormField(
+      controller: edadController,
+      readOnly: true,
+      showCursor: false,
+      enabled: false, // visualmente deshabilitado pero legible
+      textAlign: TextAlign.center,
+      decoration: InputDecoration(
+        labelText: 'Edad',
+        labelStyle: TextStyle(color: Theme.of(context).hintColor),
+        prefixIcon: MediaQuery.of(context).size.width>1024 ? const Icon(Icons.calendar_today) : null,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide(color: Theme.of(context).disabledColor),
+        ),
+        filled: true,
+        fillColor: Theme.of(context).disabledColor.withValues(alpha: 0.05),
+      ),
+      style: const TextStyle(fontWeight: FontWeight.bold),
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+    ),
+  );
 }
 
-bool validarCedula(String cedula) {
-    // Verificar que tenga exactamente 10 dígitos
-    if (cedula.length != 10 || !RegExp(r'^\d{10}$').hasMatch(cedula)) {
-      return false;
-    }
+Widget dropdownEstadoCivilField({required BuildContext context, required String? valueEstadoCivil, required List<Map<String, String>> estadoCivilList,}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+    child: DropdownButtonFormField<String>(
+      value: valueEstadoCivil,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'Estado Civil',
+        hintText: '-- Sin selección --',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+        prefixIcon: esPantallaGrande(context) ? const Icon(Icons.document_scanner) : null,
+        labelStyle: TextStyle(color: Theme.of(context).hintColor),
+      ),
+      items: estadoCivilList
+          .map((item) => DropdownMenuItem<String>(
+                value: item['codigo'],
+                child: Text(item['descripcion'] ?? ''),
+              ))
+          .toList(),
+      onChanged: (value) {
+        setState(() {
+          _valueEstadoCivil = value;
+          estadoCivilController.text = value ?? '';
+        });
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Seleccione un Estado Civil';
+        }
+        return null;
+      },
+    ),
+  );
+}
 
-    final provincia = int.parse(cedula.substring(0, 2));
-    final tercerDigito = int.parse(cedula[2]);
+Widget dropdownTipoSangreField({required BuildContext context, required String? valueTipoSangre, required List<Map<String, String>> tipoSangreList,}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+    child: DropdownButtonFormField<String>(
+      value: valueTipoSangre,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'Tipo Sangre',
+        hintText: '-- Sin selección --',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+        prefixIcon: esPantallaGrande(context) ? const Icon(Icons.bloodtype_outlined) : null,
+        labelStyle: TextStyle(color: Theme.of(context).hintColor),
+      ),
+      items: tipoSangreList
+          .map((item) => DropdownMenuItem<String>(
+                value: item['codigo'],
+                child: Text(item['descripcion'] ?? ''),
+              ))
+          .toList(),
+      onChanged: (value) {
+        setState(() {
+          _valueTipoSangre = value;
+          tipoSangreController.text = value ?? '';
+        });
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Seleccione un Tipo Sangre';
+        }
+        return null;
+      },
+    ),
+  );
+}
 
-    // Validación de provincia y tercer dígito
-    if (provincia < 1 || provincia > 24 || tercerDigito >= 6) {
-      return false;
-    }
+Widget ocupacionReferenciaField(BuildContext context, TextEditingController ocupacionReferenciaController) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+    child: TextFormField(
+      controller: ocupacionReferenciaController,
+      showCursor: true,
+      maxLength: 200,
+      textCapitalization: TextCapitalization.sentences,
+      inputFormatters: [UpperCaseTextFormatter()],
+      keyboardType: TextInputType.text,
+      decoration: InputDecoration(
+        labelText: 'Ocupación/Ref.:',
+        counterText: "",
+        labelStyle: TextStyle(color: Theme.of(context).hintColor),
+        prefixIcon: const Icon(Icons.work_history_rounded),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+      ),
+      textAlign: TextAlign.left,
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Ingrese una ocupación';
+        }
+        if (value.trim().length < 5) {
+          return 'La descripción de la ocupación es muy corta';
+        }
+        return null;
+      },
+      onChanged: (value) {
+        // Puedes aplicar lógica reactiva aquí si es necesario
+      },
+    ),
+  );
+}
 
-    final List<int> coeficientes = [2, 1, 2, 1, 2, 1, 2, 1, 2];
-    final List<int> digitos = cedula.split('').map(int.parse).toList();
-
-    int suma = 0;
-    for (int i = 0; i < 9; i++) {
-      int valor = digitos[i] * coeficientes[i];
-      if (valor >= 10) valor -= 9;
-      suma += valor;
-    }
-
-    final digitoVerificador = (10 - (suma % 10)) % 10;
-
-    return digitoVerificador == digitos[9];
-  }
 
 }
 
-class UpperCaseTextFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    return TextEditingValue(
-      text: uppercase(newValue.text),
-      selection: newValue.selection,
-    );
-  }
-}
-
-String uppercase(String value) {
-  if(value.trim().isEmpty) return "";
-  //return "${value[0].toUpperCase()}${value.substring(1).toLowerCase()}";
-  return value.toUpperCase();
-}

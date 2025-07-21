@@ -1,4 +1,5 @@
-//import 'dart:convert';
+
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +8,7 @@ import 'package:odontologo/widgets/main_menu.dart';
 import 'variables_globales.dart';
 import 'widgets/toast_msg.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
-//import 'package:http/http.dart' as http;
+import 'package:http/http.dart' as http;
 import 'package:responsive_grid/responsive_grid.dart';
 import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -82,6 +83,7 @@ class _MyHomePageState extends State<MyHomePage> {
       password.text = prefs.getString('password') ?? "PassWord";
       token = prefs.getString('token') ?? "";
       fechaValidaToken = prefs.getString('fechaValidaToken') ?? "";
+      tenantId = prefs.getString('tenantId') ?? "";
     });
   }
 
@@ -92,11 +94,13 @@ class _MyHomePageState extends State<MyHomePage> {
       await prefs.setString('password', password.text);
       await prefs.setString('token', token);
       await prefs.setString('fechaValidaToken', fechaValidaToken);
+      await prefs.setString('tenantId', tenantId);
     } else {
       await prefs.setString('username', '');
       await prefs.setString('password', '');
       await prefs.setString('token', '');
       await prefs.setString('fechaValidaToken', '');
+      await prefs.setString('tenantId', '');
     }
 
 
@@ -307,13 +311,17 @@ class _MyHomePageState extends State<MyHomePage> {
         token = '';
         userValido = '0';
       });
-      await _obtenerToken(context);
+      await _obtenerToken(context); // obtener token
       setState(() {
         _isAuthenticating = false;
       });
-
+      //print('userValido $userValido');
       if (userValido == '1') {
+        // ignore: use_build_context_synchronously
+        ToastMSG.showInfo(context,'Guardando Credenciales',2);
         _saveCredentials();
+        // ignore: use_build_context_synchronously
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const MyAppMenu()));
       } else {
         // ignore: use_build_context_synchronously
         Alert(
@@ -323,52 +331,63 @@ class _MyHomePageState extends State<MyHomePage> {
           desc: 'El usuario $usuario es invalido...',
         ).show();
       }
-      // ignore: use_build_context_synchronously
-      Navigator.push(context, MaterialPageRoute(builder: (context) => const MyAppMenu()));
-      //Navigator.pushNamed(context, '/menu');
     }
   }
 
   Future<void> _obtenerToken(BuildContext context) async {
     try {
-        setState(() {
-          //token = decodedJson['token'];
-          userValido = '1';
-        });
-
-/*       var headersList = map;
+      var headersList = map;
       
-      var url = Uri.parse('$baseUrl/api/token');
+      var url = Uri.parse('$baseUrl/api/login');
       var body = {
-        "userName": usuario, 
+        "correo": usuario, 
         "password": clave 
       };
       
-      var req = http.Request('POST', url);
-      req.headers.addAll(headersList);
-      req.body = json.encode(body);
-
-      var res = await req.send();
-      final resBody = await res.stream.bytesToString();
-
+      //print('⏳ Enviando request...');
+      final res = await http.post(url, headers: headersList, body: jsonEncode(body),);
+      //print('✅ Respuesta recibida');
+      
+      //print('res.StatusCode ${res.statusCode}');
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        Map<String, dynamic> decodedJson = json.decode(resBody);
-        setState(() {
-          token = decodedJson['token'];
-          userValido = '1';
-        });
-
+        final jsonData = jsonDecode(res.body);
+        if (context.mounted) {
+          setState(() {
+            token = jsonData["token"]; 
+            userValido = '1';
+          });
+        }
+        //print('🔐 Token recibido: $token');
       }
       else {
+        if (context.mounted) {
           setState(() {
-          userValido = '0';
-        });
-      } */
+            userValido = '0';
+          });
+        }
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          Alert(
+          // ignore: use_build_context_synchronously
+          context: context,
+          type: AlertType.warning,
+          title: "Advertencia",
+          desc: "Estado de conección: ${res.statusCode}",
+          buttons: [DialogButton(child: const Text('OK', style: TextStyle(color: Colors.white, fontSize: 18),), onPressed: () => Navigator.pop(context)), ],
+          ).show();
+        }
+      }
     
     } on Exception catch (e) {
-      // ignore: use_build_context_synchronously
-      ToastMSG.showError(context, e.toString(), 2);
+      if (context.mounted) {
+        ToastMSG.showError(context, '❌ Error: $e', 2);
+      } else {
+        // ignore: use_build_context_synchronously
+        ToastMSG.showError(context, '⚠️ Error fuera de contexto: $e', 2);
+        //print('⚠️ Error fuera de contexto: $e');
+      }      
     }
   }
+
+
 
 }
