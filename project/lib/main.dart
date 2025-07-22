@@ -79,8 +79,8 @@ class _MyHomePageState extends State<MyHomePage> {
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      user.text = prefs.getString('username') ?? "login";
-      password.text = prefs.getString('password') ?? "PassWord";
+      user.text = prefs.getString('username') ?? "";
+      password.text = prefs.getString('password') ?? "";
       token = prefs.getString('token') ?? "";
       fechaValidaToken = prefs.getString('fechaValidaToken') ?? "";
       tenantId = prefs.getString('tenantId') ?? "";
@@ -336,42 +336,39 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _obtenerToken(BuildContext context) async {
     try {
-      var headersList = map;
-      
-      var url = Uri.parse('$baseUrl/api/login');
-      var body = {
+
+
+      var request = http.Request('POST', Uri.parse('$baseUrl/api/login'));
+      request.body = json.encode({
         "correo": usuario, 
         "password": clave 
-      };
-      
-      //print('⏳ Enviando request...');
-      final res = await http.post(url, headers: headersList, body: jsonEncode(body),);
-      //print('✅ Respuesta recibida');
-      
-      //print('res.StatusCode ${res.statusCode}');
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        final jsonData = jsonDecode(res.body);
+      });
+      request.headers.addAll(headers);
+
+      http.StreamedResponse response = await request.send();
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final responseBody = await response.stream.bytesToString();
+        final jsonData = jsonDecode(responseBody);
         if (context.mounted) {
           setState(() {
             token = jsonData["token"]; 
             userValido = '1';
           });
         }
-        //print('🔐 Token recibido: $token');
       }
       else {
         if (context.mounted) {
           setState(() {
             userValido = '0';
           });
-        }
-        if (res.statusCode < 200 || res.statusCode >= 300) {
+        }        
+        if (response.statusCode < 200 || response.statusCode >= 300) {
           Alert(
-          // ignore: use_build_context_synchronously
           context: context,
           type: AlertType.warning,
           title: "Advertencia",
-          desc: "Estado de conección: ${res.statusCode}",
+          desc: "Estado de conección: ${response.statusCode}",
           buttons: [DialogButton(child: const Text('OK', style: TextStyle(color: Colors.white, fontSize: 18),), onPressed: () => Navigator.pop(context)), ],
           ).show();
         }

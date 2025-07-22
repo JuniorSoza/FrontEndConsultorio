@@ -1,7 +1,7 @@
 
-//String baseUrl = 'https://localhost:7000';
+String baseUrl = 'http://localhost:3000';
 
-String baseUrl = 'https://backendconsultorio.onrender.com';
+//String baseUrl = 'https://backendconsultorio.onrender.com';
 
 String usuario = 'usuario';
 String clave = "clave";
@@ -21,3 +21,7 @@ var map = {
   };
 
 
+var headers = {
+  'x-tenant-id': 'admin',
+  'Content-Type': 'application/json'
+};
